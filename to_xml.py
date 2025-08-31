@@ -23,30 +23,36 @@ def read_param(start, Parameters, mat_file, offset):
     par_name = read_string(par_name_st+offset, mat_file) #gets parameter name
     mat_file.seek(par_loc_st+offset)
     Parameter = ET.SubElement(Parameters, par_name)
-    ET.SubElement(Parameter, "value_W").text = str(round(iee754(mat_file.read(4).hex()), 5))
     ET.SubElement(Parameter, "value_X").text = str(round(iee754(mat_file.read(4).hex()), 5))
     ET.SubElement(Parameter, "value_Y").text = str(round(iee754(mat_file.read(4).hex()), 5))
     ET.SubElement(Parameter, "value_Z").text = str(round(iee754(mat_file.read(4).hex()), 5))
+    ET.SubElement(Parameter, "value_W").text = str(round(iee754(mat_file.read(4).hex()), 5))
 
 def open_texture(file_path, folder_path):
     try:
         texture = open(f'{folder_path}/{file_path}.texture','rb')
 
         texture_fsize = int(texture.read(4).hex(), 16)
-        texture_version = int(texture.read(4).hex(), 16)  # 00000000
+        texture_version = int(texture.read(4).hex(), 16)  # 00000001
         texture_offset_final_table = int(texture.read(4).hex(), 16)
         texture_root_node_offset = int(texture.read(4).hex(), 16)
         texture_offset_final_table_abs = int(texture.read(4).hex(), 16)
 
         texture_padding1 = int(texture.read(4).hex(), 16) # 00000000
         texture_fname_l = int(texture.read(4).hex(), 16)
-        texture_padding1 = int(texture.read(4).hex(), 16)  # 00000000
+
+        texture_padding2 = int(texture.read(1).hex(), 16)  # 00
+        texture_U_wrap = int(texture.read(1).hex(), 16)  # U from 00 to 04
+        texture_V_wrap = int(texture.read(1).hex(), 16)  # V from 00 to 04
+        texture_padding3 = int(texture.read(1).hex(), 16)  # 00
+
         texture_type_l = int(texture.read(4).hex(), 16)
         return (read_string(texture_fname_l+texture_root_node_offset, texture),
-                read_string(texture_type_l+texture_root_node_offset, texture))
+                read_string(texture_type_l+texture_root_node_offset, texture),
+                texture_U_wrap, texture_V_wrap)
     except FileNotFoundError:
         print(f"couldn't find texture: {folder_path}/{file_path}.texture")
-        return ("Missing_texture","None")
+        return ("Missing_texture","None",0,0)
 
 def open_texset(file_path, xml_tree, folder_path):
     try:
@@ -62,15 +68,19 @@ def open_texset(file_path, xml_tree, folder_path):
         texset_amnt_textures = int(texset.read(4).hex(), 16)
         texset_locats_start = int(texset.read(4).hex(), 16)  # usually 00000008
         Textures = ET.SubElement(xml_tree, "Textures")
+        Wrap_definitions = ET.Comment("Wrap modes are: \n0-Repeat \n1-Mirror \n2-Clamp \n3-MirrorOnce \n4-Border(Extend)")
+        Textures.insert(0, Wrap_definitions)
         for i in range(texset_amnt_textures):
             cur_texture_name = str(read_string(int(texset.read(4).hex(), 16) + texset_root_node_offset, texset))
             texset.seek(texset_locats_start + texset_root_node_offset + 4 * (i + 1))
-            texture_file, texture_type = open_texture(cur_texture_name, folder_path)
+            texture_file, texture_type, texture_U, texture_V = open_texture(cur_texture_name, folder_path)
             if texture_file == "Missing_texture":
                 ET.SubElement(Textures, "Missing_texture")
             else:
                 Texture = ET.SubElement(Textures, "texture")
-                ET.SubElement(Texture, "name").text = cur_texture_name
+                ET.SubElement(Texture, "name").text = str(cur_texture_name)
+                ET.SubElement(Texture, "U_wrap").text = str(texture_U)
+                ET.SubElement(Texture, "V_wrap").text = str(texture_V)
                 ET.SubElement(Texture, "texture_file").text = str(texture_file)
                 ET.SubElement(Texture, "texture_type").text = str(texture_type)
     except FileNotFoundError:
@@ -133,4 +143,4 @@ def convert_mat_to_xml (input_file):
     ET.indent(tree)
     tree.write(f"{os.path.split(input_file)[0]}/{os.path.split(input_file)[1].split('.')[0]}.xml")
 
-convert_mat_to_xml("./te.st/chains.material")
+convert_mat_to_xml("te.st/test_texture_mat/testing_texture_params.material")
