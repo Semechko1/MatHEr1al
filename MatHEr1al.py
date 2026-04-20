@@ -2,7 +2,6 @@ import os.path
 import struct
 import sys
 import xml.etree.ElementTree as ET
-from IEEE754_to_float import ieee754_to_float as iee754
 
 def go_back_and_write(file, location, mtype, value):
     temp_val = file.tell()
@@ -397,10 +396,10 @@ def read_param(start, Parameters, mat_file, offset):
     par_name = read_string(par_name_st+offset, mat_file)
     mat_file.seek(par_loc_st+offset)
     Parameter = ET.SubElement(Parameters, par_name)
-    ET.SubElement(Parameter, "value_X").text = str(round(iee754(mat_file.read(4).hex()), 5))
-    ET.SubElement(Parameter, "value_Y").text = str(round(iee754(mat_file.read(4).hex()), 5))
-    ET.SubElement(Parameter, "value_Z").text = str(round(iee754(mat_file.read(4).hex()), 5))
-    ET.SubElement(Parameter, "value_W").text = str(round(iee754(mat_file.read(4).hex()), 5))
+    ET.SubElement(Parameter, "value_Y").text = str(round(struct.unpack('>f',mat_file.read(4).hex())[0], 5))
+    ET.SubElement(Parameter, "value_X").text = str(round(struct.unpack('>f',mat_file.read(4).hex())[0], 5))
+    ET.SubElement(Parameter, "value_Z").text = str(round(struct.unpack('>f',mat_file.read(4).hex())[0], 5))
+    ET.SubElement(Parameter, "value_W").text = str(round(struct.unpack('>f',mat_file.read(4).hex())[0], 5))
 
 def open_texture(file_path, folder_path):
     try:
@@ -602,7 +601,7 @@ def convert_mat_to_xml(input_file):
 
 
 if len(sys.argv) < 2:
-    print("Usage: python to_material.py <input.material|input.xml>")
+    print("Usage: python MatHEr1al.py <input.material|input.xml>")
     sys.exit(1)
 
 input_path = sys.argv[1]
